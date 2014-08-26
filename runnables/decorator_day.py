@@ -57,8 +57,8 @@ other_stuff()
 
 # Out[2]:
 
-#     Decorating <function do_stuff at 0x7f4b8001eb70>
-#     Decorating <function other_stuff at 0x7f4b8001eae8>
+#     Decorating <function do_stuff at 0x7fa8a4079b70>
+#     Decorating <function other_stuff at 0x7fa8a4079ae8>
 #     1
 #     2
 #     3
@@ -232,8 +232,8 @@ print(double(4))
 
 # Out[7]:
 
-#     double == <function double at 0x7f4b80030620>
-#     double.__wrapped__ == <function double at 0x7f4b80030598>
+#     double == <function double at 0x7fa8a408a620>
+#     double.__wrapped__ == <function double at 0x7fa8a408a598>
 #     Calling double
 #     8
 # 
@@ -274,7 +274,7 @@ print(random.__dict__)
 
 # Out[8]:
 
-#     {'author': 'Alec Nikolas Reiter', 'date': datetime.datetime(2014, 8, 19, 0, 0), 'reviewed_by': 'You', 'review_date': datetime.datetime(2014, 8, 20, 22, 53, 32, 921777)}
+#     {'date': datetime.datetime(2014, 8, 19, 0, 0), 'author': 'Alec Nikolas Reiter', 'review_date': datetime.datetime(2014, 8, 26, 0, 15, 4, 334619), 'reviewed_by': 'You'}
 # 
 
 # This example demonstrates the ability to *stack* decorators. It's exactly the same as `random = annotate(...)(annotate(...))(random)`. In this case, the original `random` bubbles up to the surface because it simply passes through the `annotate` decorator. However, when stacking decorators that intercept the actual function call, e.g. a closure actually *calls* the function, stacking decorators gets pretty tricky. I'll show this later on.
@@ -318,7 +318,17 @@ def example_b(*args, **kw):
 
 # In[10]:
 
-
+class wrapper(object):
+    '''Wraps a function inside the object.'''
+    def __init__(self, f):
+        self.f = f
+        self.__name__ = f.__name__
+        self.__doc__ = f.__doc__
+        self.__dict__.update(f.__dict__)
+    def __call__(self, *args, **kw):
+        return self.f(*args, **kw)
+    def __repr__(self):
+        return "{!r}".format(self.f)
     
 @wrapper
 def random():
@@ -384,13 +394,13 @@ print('mul cache lookup: ', mul.lookup)
 #     Caching args ((5,){}) and result now.
 #     5th Fibonacci number:  5
 #     5th Fibonacci number:  5
-#     Fibonacci cache lookup:  {'(4,){}': 3, '(5,){}': 5}
+#     Fibonacci cache lookup:  {'(5,){}': 5, '(4,){}': 3}
 #     --------------------
 #     Caching args ((){'x': 3}) and result now.
 #     mul(x=3):  3
 #     Caching args ((3,){}) and result now.
 #     mul(3): 3
-#     mul cache lookup:  {"(){'x': 3}": 3, '(3,){}': 3}
+#     mul cache lookup:  {'(3,){}': 3, "(){'x': 3}": 3}
 # 
 
 # This function would be helpful for attempting to contact a rate limited API. An alternative (and more common implementation) would accept a list of exceptions you'd expect to encounter and handle them as part of the back off process.
@@ -435,7 +445,7 @@ except (StopIteration,) as e:
 # Out[12]:
 
 #     Successfully returned None
-#     Attempted <function _none at 0x7f4b80030378> 1 times, failed to return result
+#     Attempted <function _none at 0x7fa8a408a378> 1 times, failed to return result
 # 
 
 # In[13]:
@@ -506,20 +516,20 @@ print('\n{!r}'.format(foo))
 
 # Out[13]:
 
-#     Registered <function foo at 0x7f4b8001ea60> on <Hook: 'foo_watcher'>
-#     Registered <function foo at 0x7f4b8001ea60> on <Hook: 'foo_reactor'>
+#     Registered <function foo at 0x7fa8a4079a60> on <Hook: 'foo_watcher'>
+#     Registered <function foo at 0x7fa8a4079a60> on <Hook: 'foo_reactor'>
 #     
-#     <function foo at 0x7f4b8001ef28>
+#     <function foo at 0x7fa8a4079f28>
 #     
 #     Watchers of foo: 
 #     <Hook: 'foo_watcher'>
 #     <Hook: 'foo_reactor'>
-#     <Hook: 'foo_watcher'> reporting that <function foo at 0x7f4b8001ea60> returned 3.14
-#     <Hook: 'foo_reactor'> reporting that <function foo at 0x7f4b8001ea60> returned 3.14
+#     <Hook: 'foo_watcher'> reporting that <function foo at 0x7fa8a4079a60> returned 3.14
+#     <Hook: 'foo_reactor'> reporting that <function foo at 0x7fa8a4079a60> returned 3.14
 #     
 #     Running foo() 3.14
 #     
-#     <function foo at 0x7f4b8001ef28>
+#     <function foo at 0x7fa8a4079f28>
 # 
 
 # When you're stacking decorators, you must be careful to remember how they're evaluated: bottom up. Which reflects the inside-out evaluation of what they perform. Follow along here...
@@ -540,14 +550,14 @@ print("{!r} created by {!r} on {!r}".format(fib, fib.author, fib.date))
 
 # Out[14]:
 
-#     Registered <function fib at 0x7f4b80041ae8> on <Hook: 'fib_watcher'>
+#     Registered <function fib at 0x7fa8a409bae8> on <Hook: 'fib_watcher'>
 #     Caching args ((10,){}) and result now.
-#     <Hook: 'fib_watcher'> reporting that <function fib at 0x7f4b80041ae8> returned 55
+#     <Hook: 'fib_watcher'> reporting that <function fib at 0x7fa8a409bae8> returned 55
 #     Tenth Fibonacci Number:  55
-#     <Hook: 'fib_watcher'> reporting that <function fib at 0x7f4b80041ae8> returned 55
+#     <Hook: 'fib_watcher'> reporting that <function fib at 0x7fa8a409bae8> returned 55
 #     Tenth Fibonacci Number:  55
 #     {'(10,){}': 55}
-#     <function register_hooks.<locals>.wrapper.<locals>.run at 0x7f4b80041a60> created by 'Alec Nikolas Reiter' on datetime.datetime(2014, 8, 19, 0, 0)
+#     <function register_hooks.<locals>.wrapper.<locals>.run at 0x7fa8a409ba60> created by 'Alec Nikolas Reiter' on datetime.datetime(2014, 8, 19, 0, 0)
 # 
 
 # That last lines demonstrates exactly what makes working with decorators difficult. Sure, the extra metadata made it through but the ultimate representation is coming from the `register_hooks` decorator despite the fact we were careful to use `wraps` all the way up when necessary.
@@ -571,34 +581,18 @@ class Thing(object):
 ben_grimm = Thing('Ben Grimm')
     
 print(Thing.__init__.author)
-print(ben_grimm.roar(phrase="IT'S CLOBBERING TIME!"))
+
+try:
+    print(ben_grimm.roar(phrase="IT'S CLOBBERING TIME!"))
+except TypeError as e:
+    print("Boom!", e)
 
 
 # Out[15]:
 
-
-    ---------------------------------------------------------------------------
-    TypeError                                 Traceback (most recent call last)
-
-    <ipython-input-15-78bb286f6f65> in <module>()
-         11 
-         12 print(Thing.__init__.author)
-    ---> 13 print(ben_grimm.roar(phrase="IT'S CLOBBERING TIME!"))
-    
-
-    <ipython-input-11-f89826591d03> in __call__(self, *args, **kw)
-         11         if key not in self.lookup:
-         12             print("Caching args ({!s}) and result now.".format(key))
-    ---> 13             self.lookup[key] = self.f(*args, **kw)
-         14         return self.lookup[key]
-         15 
-
-
-    TypeError: roar() missing 1 required positional argument: 'self'
-
-
 #     Alec Nikolas Reiter
 #     Caching args ((){'phrase': "IT'S CLOBBERING TIME!"}) and result now.
+#     Boom! roar() missing 1 required positional argument: 'self'
 # 
 
 # You can even wrap objects. For example, this'll create an extremely basic identity map that'll always return the same object when the same arguments are passed in.
@@ -699,8 +693,8 @@ print(memo.cache)
 #     is_even :  Checks if a number is even
 #     False
 #     True
-#     defaultdict(<class 'dict'>, {'is_even': {'(5,){}': False, '(34,){}': True}, 'Point': {'(6, 8){}': <__main__.Point object at 0x7f4b79b4c4a8>, '(3, 4){}': <__main__.Point object at 0x7f4b80044128>}})
-#     defaultdict(<class 'dict'>, {'is_even': {'(5,){}': False, '(34,){}': True}, 'Point': {'(3, 4){}': <__main__.Point object at 0x7f4b79b4c550>}})
+#     defaultdict(<class 'dict'>, {'is_even': {'(5,){}': False, '(34,){}': True}, 'Point': {'(3, 4){}': <__main__.Point object at 0x7fa8a40a2fd0>, '(6, 8){}': <__main__.Point object at 0x7fa8a40a2eb8>}})
+#     defaultdict(<class 'dict'>, {'is_even': {'(5,){}': False, '(34,){}': True}, 'Point': {'(3, 4){}': <__main__.Point object at 0x7fa8a40410f0>}})
 # 
 
 # Fin
