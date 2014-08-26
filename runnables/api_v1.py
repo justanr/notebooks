@@ -154,7 +154,7 @@ album_fields = {'name':fields.String, 'id':fields.Integer}
 track_fields = {
     'name':fields.String, 'id':fields.Integer, 'position':fields.Integer,
     'length':HumanReadableTime, 'artist':fields.Nested(artist_fields),
-    'albums':fields.List(album_fields)
+    'albums':fields.List(fields.Nested(album_fields))
     }
 
 
@@ -241,7 +241,7 @@ tracks = list(chain.from_iterable(a.tracks for a in albums))
 
 # In[ ]:
 
-ArtistSerialize(immolation, exclude=('albums',).data
+# ArtistSerialize(immolation, exclude=('albums',)).data
 
 
 #     {
@@ -257,7 +257,7 @@ ArtistSerialize(immolation, exclude=('albums',).data
 
 # In[ ]:
 
-TrackSerialize(tracks[:2], many=True).data
+# TrackSerialize(tracks[:2], many=True).data
 
 
 #     {
@@ -359,6 +359,9 @@ api.add_resource(ListAlbum, '/album/', endpoint='albums')
 
 api.add_resource(SingleTrack, '/track/<int:id>/', endpoint='track')
 api.add_resource(ListTrack, '/track/', endpoint='tracks')
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000, host='0.0.0.0')
 
 
 # That's It.
