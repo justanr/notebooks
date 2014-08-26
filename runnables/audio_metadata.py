@@ -63,7 +63,7 @@ print(tracks[0])
 
 # Out[1]:
 
-#     {'track': '\x035', 'album': '\x03When the Kite String Pops', 'duration': 297.87708785043435, 'bitrate': 320.0, 'title': '\x03Jezebel', 'audio_offset': 192239, 'filesize': 11915076, 'track_total': '14', 'year': '1994', 'artist': '\x03Acid Bath', 'samplerate': 44100}
+#     {'audio_offset': 192239, 'samplerate': 44100, 'bitrate': 320.0, 'title': '\x03Jezebel', 'track': '\x035', 'filesize': 11915076, 'duration': 297.87708785043435, 'album': '\x03When the Kite String Pops', 'track_total': '14', 'year': '1994', 'artist': '\x03Acid Bath'}
 # 
 
 # As an aside, if you've never listened to [Acid Bath](http://www.metal-archives.com/bands/Acid_Bath/19), I can't recommend them enough. Hard rocking, groovy sludgey metal with lyrics that are equal parts Lewis Carroll, grotesque and drug binge. Some songs are more the typical what the layman thinks of metal (Jezebel, Cheap Vodka) but with songs like Venus Blue, Bleed Me an Ocean and Dead Girl there's really something for most people.
@@ -94,7 +94,7 @@ def fixer(value, ignore=(AttributeError, UnicodeEncodeError), handle=None):
     handle is an optional exception handler.
     '''
     try:
-        value = value.encode('latin-1').decode('utf-8')
+        value = value.encode('latin-1').decode('utf-8').strip()
         # matching \x03 is frustrating
         # again, just a crutch to lean on
         if not value[0].isprintable():
@@ -158,7 +158,7 @@ print(nzp)
 #     Expected:      At the Drive-In - Relationship of Command - 11 - Non-Zero Possibility
 #     Actual:        At the DriveâIn - Relationship of Command - 11 - NonâZero Possibility
 #     After Fixing:  At the Drive‐In - Relationship of Command - 11 - Non‐Zero Possibility
-#     {'track': 11, 'album': 'Relationship of Command', 'duration': 336, 'bitrate': 128.0, 'title': 'Non‐Zero Possibility', 'audio_offset': 2058, 'filesize': 5382993, 'track_total': 11, 'year': 2000, 'artist': 'At the Drive‐In', 'samplerate': 44100}
+#     {'audio_offset': 2058, 'samplerate': 44100, 'bitrate': 128.0, 'title': 'Non‐Zero Possibility', 'track': 11, 'filesize': 5382993, 'duration': 336, 'album': 'Relationship of Command', 'track_total': 11, 'year': 2000, 'artist': 'At the Drive‐In'}
 # 
 
 # As you can see, encoding issues are *painful*. This bandage is the best I can come up with until I can actually track down and address the issue. However, this works *for now* (and like so many `#TODO: Address actual issue` functions, it'll inevitable end up in my codebase permanently).
