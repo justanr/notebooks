@@ -63,7 +63,7 @@ print(tracks[0])
 
 # Out[1]:
 
-#     {'audio_offset': 192239, 'samplerate': 44100, 'bitrate': 320.0, 'title': '\x03Jezebel', 'track': '\x035', 'filesize': 11915076, 'duration': 297.87708785043435, 'album': '\x03When the Kite String Pops', 'track_total': '14', 'year': '1994', 'artist': '\x03Acid Bath'}
+#     {'track_total': '14', 'title': '\x03Jezebel', 'filesize': 11915076, 'artist': '\x03Acid Bath', 'album': '\x03When the Kite String Pops', 'track': '\x035', 'audio_offset': 192239, 'bitrate': 320.0, 'year': '1994', 'samplerate': 44100, 'duration': 297.87708785043435}
 # 
 
 # As an aside, if you've never listened to [Acid Bath](http://www.metal-archives.com/bands/Acid_Bath/19), I can't recommend them enough. Hard rocking, groovy sludgey metal with lyrics that are equal parts Lewis Carroll, grotesque and drug binge. Some songs are more the typical what the layman thinks of metal (Jezebel, Cheap Vodka) but with songs like Venus Blue, Bleed Me an Ocean and Dead Girl there's really something for most people.
@@ -158,7 +158,7 @@ print(nzp)
 #     Expected:      At the Drive-In - Relationship of Command - 11 - Non-Zero Possibility
 #     Actual:        At the DriveâIn - Relationship of Command - 11 - NonâZero Possibility
 #     After Fixing:  At the Drive‐In - Relationship of Command - 11 - Non‐Zero Possibility
-#     {'audio_offset': 2058, 'samplerate': 44100, 'bitrate': 128.0, 'title': 'Non‐Zero Possibility', 'track': 11, 'filesize': 5382993, 'duration': 336, 'album': 'Relationship of Command', 'track_total': 11, 'year': 2000, 'artist': 'At the Drive‐In'}
+#     {'track_total': 11, 'title': 'Non‐Zero Possibility', 'filesize': 5382993, 'artist': 'At the Drive‐In', 'album': 'Relationship of Command', 'track': 11, 'audio_offset': 2058, 'bitrate': 128.0, 'year': 2000, 'samplerate': 44100, 'duration': 336}
 # 
 
 # As you can see, encoding issues are *painful*. This bandage is the best I can come up with until I can actually track down and address the issue. However, this works *for now* (and like so many `#TODO: Address actual issue` functions, it'll inevitable end up in my codebase permanently).
@@ -184,11 +184,8 @@ def cache(cls):
     _registry = WeakValueDictionary()
     _ids = it.count(1)
     
-    def by_name(cls, name):
-        if name in _registry:
-            return _registry[name]
-        else:
-            return None
+    def by_name(name):
+        return _registry.get(name, None)
     
     @wraps(cls)
     def wrapper(name, *args, **kwargs):
@@ -206,7 +203,7 @@ def cache(cls):
             
         #reuturn the instance
         return _registry[name]
-    wrapper.by_name = partial(by_name, cls)
+    wrapper.by_name = by_name
     return wrapper
             
 class ComparableMixin(object):
@@ -242,6 +239,7 @@ class ComparableMixin(object):
 @cache
 class Artist(ComparableMixin):
     def __init__(self, name, albums=None):
+        self.id = None
         self.name = name
         # albums should be a list of albums
         # but it becomes a dictionary
@@ -277,6 +275,7 @@ class Artist(ComparableMixin):
 class Album(ComparableMixin):
     
     def __init__(self, name, artist=None, tracks=None):
+        self.id = None
         self.name = name
         self.artist = Artist.by_name(artist)
         self.tracks = tracks or []
@@ -299,6 +298,7 @@ class Album(ComparableMixin):
 class Track(ComparableMixin):
     
     def __init__(self, name, track, length, artist=None, album=None):
+        self.id = None
         self.name = name
         self.track = track
         self.length = length # in seconds
@@ -588,4 +588,77 @@ print("\nTracks: ", *sorted(tracks), sep='\n')
 #     <Track artist=Alt-J album=An Awesome Wave track=13 name=Taro id=57>
 # 
 
-# Of course, with a huge directory you'd probably want to work in generators and windowing. ;)
+# That works, but it's recursive (in a bad way). And it stores everything *in memory*. Yuck. I have approximately 26,000 or so audio files chilling in my music directory. Do we really want to store all that information all at once when the ultimate goal is to simlply stuff it in the database (did I give away my plan?) and throw the immediate result away.
+# 
+# You know what's really good at doing something and then throwing results away? Generators. Adapting `r_get_music_files` to a general file walker is trivial but I'm slightly vain and overly happy with my end generator. Before anyone jumps on me and says, "ALEC! There's os.walk! You've got os imported already!" 
+# 
+# I know. `os.walk` almost does what we want: start with a folder, find the subfolders, yield a list of things. Except in this case it's three tuples: `(dirpath, dirnames, filenames)`. Which means we need to then parse that before getting to what we want. We could also use glob for this -- iglob uses an iterator -- but that delves into using regular expressions. There's `pathlib` in 3.4, but I'm ultimately unfamilar with it.
+
+# In[7]:
+
+def walk(basedir, ignore=None):
+    for f in sorted(os.listdir(basedir)):
+        # store fullpath separately so we can
+        # easily pass it if needed
+        fp = os.path.join(basedir, f)
+        if ignore and ignore(basedir, f):
+            continue
+        elif os.path.isdir(fp):
+            # to quote Dave Beazley:
+            # "Yield from is the ultimate not my problem.
+            # It just says, 'Here's some generator, you deal with it.'"
+            yield from walk(fp, ignore)
+        else:
+            # must be a file we're looking for
+            yield fp
+
+def ignore(base, f, valid_types=('.mp3', '.ogg', '.oga', '.wav', '.flac')):
+    '''Example ignore function.'''
+    fp = os.path.join(base, f)
+    # ignore 'hidden' files and directories
+    if f.startswith('.'):
+        return True
+    # filter actual files based on their extension
+    elif os.path.isfile(fp) and not f.lower().endswith(valid_types):
+        return True
+    # got here, so we return False to *not* ignore this file
+    # a little confusing
+    # also, I don't like if/elif without a else
+    else:
+        return False
+
+# breaking the adaptor fully out into it's own function as well
+# even though for this example we're dealing exclusively with
+# TinyTag, I did give links to several other metadata libraries
+# maybe you're dealing with one of those?
+adaptor = lambda t: {'artist':t.artist, 'album':t.album, 'length':t.duration, 'name':t.title, 'track':t.track}
+
+def convert_track(track, adaptor):
+    info = adaptor(track)
+    artist = Artist(name=info['artist'])
+    album = Album(name=info['album'], artist=info['artist'])
+    track = Track(**info)
+    return artist, album, track
+
+get_ipython().magic("timeit -n 100 -r 5 next(walk('/home/justanr/Music/', ignore=ignore))")
+get_ipython().magic("timeit -n 100 -r 5 next(os.walk('/home/justanr/Music'))")
+track = next(walk('/home/justanr/Music/', ignore=ignore))
+track = TinyTag.get(track)
+track = fix_track(track)
+print(*convert_track(track, adaptor), sep='\n')
+
+
+# Out[7]:
+
+#     100 loops, best of 5: 295 µs per loop
+#     100 loops, best of 5: 1.34 ms per loop
+#     <Artist name=16 id=4>
+#     <Album name=Bridges to Burn artist=16 id=6>
+#     <Track artist=16 album=Bridges to Burn track=1 name=Throw in the Towel id=58>
+# 
+
+# It's still procedural code but it's nicely composable. And it's quick. In this particular instance, it's faster than os.walk but I've always thought benchmarks are useless without a greater context -- so for shits and giggles, I ran both over my Music directory (with all 26,000+ files), just spitting values into 0 length deque, and my walk function took about ~560ms, os.walk took ~350ms. Considering we're doing a little more work than os.walk, I'll take it any day of the week.
+# 
+# And even though convert_track only accepts one track now, chunking over walk with `islice` is obvious.
+# 
+# Now that I've digressed completely from audio metadata to quickly processing through files, I think I'll end here.
